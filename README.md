@@ -71,3 +71,6 @@ See: https://robinwinslow.uk/2016/06/23/fix-docker-networking-dns/
 
 ## Automatically starting container on host reboot
 TBD
+
+## Error handling
+Errors the microservice encounters are published to ${topic}/exception.

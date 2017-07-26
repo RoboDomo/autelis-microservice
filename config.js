@@ -17,7 +17,7 @@ module.exports = {
         //      topic: autelist/jets
         //      message: on
         //
-        topic: 'autelis',
+        topic: process.env.topic || 'autelis',
     },
     // base URL to your pool control
     // by default, the autelis controller uses mDNS to configure its hostname to poolcontrol.

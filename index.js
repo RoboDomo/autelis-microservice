@@ -4,7 +4,7 @@ process.env.DEBUG = 'AutelisHost,HostBase'
 // http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference
 
 const
-    debug       = require('debug')('AutelistHost'),
+    debug       = require('debug')('AutelisHost'),
     Config      = require('./config'),
     credentials = Config.autelis.credentials,
     host        = Config.autelis.host,
@@ -40,7 +40,15 @@ const runStates    = {
           0: 'off',
           1: 'enabled',
           2: 'on'
-      }
+      },
+      // these are valid things that can be set
+      validCommands = [
+          'pump', 'pumplo', 'spa', 'waterfall', 'cleaner', 'poolht', 'spaht', 'solarht',
+          'aux1', 'aux2', 'aux3', 'aux4', 'aux5', 'aux6', 'aux7', 'aux8', 'aux9', 'aux10',
+          'aux11', 'aux12', 'aux13', 'aux14', 'aux15', 'aux16', 'aux17', 'aux18', 'aux19', 'aux20',
+          'aux21', 'aux22', 'aux23',
+          'poolsp', 'poolsp2', 'spasp'
+      ]
 
 class AutelisHost extends HostBase {
     constructor(host, topic) {
@@ -59,10 +67,12 @@ class AutelisHost extends HostBase {
                 .auth(credentials.username, credentials.password)
                 .end((err, res) => {
                     if (err) {
+                        this.exception(err)
                         return reject(err)
                     }
                     xml2js(res.text, (err, result) => {
                         if (err) {
+                            this.exception(err)
                             return reject(err)
                         }
                         const response  = result.response,
@@ -82,13 +92,13 @@ class AutelisHost extends HostBase {
                         // assignments.  Those can be configured in the client app.
                         const poolData = {
                             runstate : runStates[parseInt(system.runstate[0], 10)],
-                            model    : '=' + system.model[0] + '=',
-                            dip      : '=' + system.dip[0] + '=',
+                            model    : system.model[0],
+                            dip      : system.dip[0],
                             opmode   : opModes[parseInt(system.opmode[0], 10)],
-                            vbat     : parseInt(system.vbat[0], 10) * 0.01464,
+                            vbat     : String(parseInt(system.vbat[0], 10) * 0.01464),
                             lowbat   : parseInt(system.lowbat[0], 10) ? 'Low' : 'Normal',
                             version  : system.version[0],
-                            time     : parseInt(system.time[0], 10),
+                            time     : system.time[0],
                             pump     : parseInt(equipment.pump[0], 10) ? 'on' : 'off',
                             pumplo   : parseInt(equipment.pumplo[0], 10) ? 'on' : 'off',
                             spa      : parseInt(equipment.spa[0], 10) ? 'on' : 'off',
@@ -120,14 +130,14 @@ class AutelisHost extends HostBase {
                             aux21    : parseInt(equipment.aux21[0], 10) ? 'on' : 'off',
                             aux22    : parseInt(equipment.aux22[0], 10) ? 'on' : 'off',
                             aux23    : parseInt(equipment.aux23[0], 10) ? 'on' : 'off',
-                            poolsp   : parseInt(temp.poolsp[0], 10),
-                            poolsp2  : parseInt(temp.poolsp2[0], 10),
-                            spasp    : parseInt(temp.spasp[0], 10),
-                            pootTemp : parseInt(temp.pooltemp[0], 10),
-                            spatemp  : parseInt(temp.spatemp[0], 10),
-                            airtemp  : parseInt(temp.airtemp[0], 10),
-                            solartemp: parseInt(temp.solartemp[0], 10),
-                            tempunits: temp.tempunits,
+                            poolsp   : temp.poolsp[0],
+                            poolsp2  : temp.poolsp2[0],
+                            spasp    : temp.spasp[0],
+                            pooltemp : temp.pooltemp[0],
+                            spatemp  : temp.spatemp[0],
+                            airtemp  : temp.airtemp[0],
+                            solartemp: temp.solartemp[0],
+                            tempunits: temp.tempunits[0],
                         }
                         resolve(poolData)
                     })
@@ -145,6 +155,7 @@ class AutelisHost extends HostBase {
                 .auth(credentials.username, credentials.password)
                 .end((err, response) => {
                     if (err) {
+                        this.exception(err)
                         return reject(err)
                     }
                     resolve(response.text)
@@ -165,33 +176,44 @@ class AutelisHost extends HostBase {
                 this.state = await this.pollOnce()
             }
             catch (e) {
-                console.log('ERROR', e.message)
+                this.exception(e)
+                debug('ERROR', e.message)
             }
             await this.wait(POLL_TIME)
         }
 
     }
 
-    command(device, state) {
-        const dev = deviceMap.forward[device]
-
+    async command(device, state) {
+        debug('command', device, state)
+        if (device === 'exception') {
+            Promise.resolve()
+        }
+        if (device === 'autelis/exception') {
+            return
+        }
+        if (validCommands.indexOf(device) === -1) {
+            if (this.state[device] !== state) {
+                this.exception(new Error('Cannot set ' + device))
+            }
+            return
+        }
         if (device === 'spasp' || device === 'poolsp') {
             state = Number(state)
         }
 
-        if (dev === undefined || this.state[device] === state) {
-            console.log(device, dev, state, 'ignored')
+        if (String(this.state[device]) === String(state)) {
+            // debug(device, state, 'ignored')
             return
         }
-
+        debug(device, this.state[device], typeof this.state[device], state, typeof state)
         let newState   = state,
             isSetpoint = false
 
-        console.log('dev', dev, 'device', device, '')
-        if (state === 'on') {
+        if (state === 'on' || state === '1' || state === 1) {
             newState = '&value=1'
         }
-        else if (state === 'off') {
+        else if (state === 'off' || state === '0' || state === 0) {
             newState = '&value=0'
         }
         else {
@@ -199,7 +221,7 @@ class AutelisHost extends HostBase {
             isSetpoint = true
         }
 
-        const url = `${host}/set.cgi?name=${dev}${newState}`
+        const url = `${host}/set.cgi?name=${device}${newState}`
         debug(url)
 
         if (isSetpoint) {
@@ -212,10 +234,11 @@ class AutelisHost extends HostBase {
                 .auth(credentials.username, credentials.password)
                 .end((err, response) => {
                     if (err) {
+                        this.exception(err)
                         return reject(err)
                     }
                     else {
-                        return resolve()
+                        return resolve(response)
                     }
                 })
         })

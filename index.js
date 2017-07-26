@@ -1,10 +1,15 @@
-const Config   = require('./config'),
-      debug    = require('debug')('AutelistHost'),
-      request  = require('superagent'),
-      xml2js   = require('xml2js').parseString,
-      HostBase = require('microservice-core/HostBase'),
-      MQTT     = require('mqtt'),
-      client   = MQTT.connect(Config.mqtt.host)
+process.env.DEBUG = 'AutelisHost,HostBase'
+
+const
+    debug       = require('debug')('AutelistHost'),
+    Config      = require('./config'),
+    credentials = Config.autelis.credentials,
+    host        = Config.autelis.host,
+    topic       = Config.mqtt.topic,
+    deviceMap   = Config.deviceMap,
+    request     = require('superagent'),
+    xml2js      = require('xml2js').parseString,
+    HostBase    = require('microservice-core/HostBase')
 
 const POLL_TIME    = 6000,      // how often to poll Autelis controller
       REQUEST_TIME = 1500       // delay in requestProcessor
@@ -32,27 +37,15 @@ const runStates    = {
           0: 'off',
           1: 'enabled',
           2: 'on'
-      },
-      deviceMap    = Config.deviceMap,
-      host         = Config.autelis.host
+      }
 
 class AutelisHost extends HostBase {
-    constructor() {
-        debug('constructor')
-        super(host)
+    constructor(host, topic) {
+        debug('constructor', host, topic)
+        super(host, topic)
         this.requestQueue = []
         this.poll()
         this.requestProcessor()
-        this.on('statechange', (newState, oldState) => {
-            oldState = oldState || {}
-            for (const key in newState) {
-                if (oldState[key] === 'undefined' || oldState[key] !== newState[key]) {
-                    debug('publish', key, newState[key])
-                    client.publish(Config.mqtt.topic + '/' + key, String(newState[key]))
-                }
-            }
-        })
-
     }
 
     async pollOnce() {
@@ -60,7 +53,7 @@ class AutelisHost extends HostBase {
         return new Promise((resolve, reject) => {
             request
                 .get(url)
-                .auth(Config.autelis.credentials.username, Config.autelis.credentials.password)
+                .auth(credentials.username, credentials.password)
                 .end((err, res) => {
                     if (err) {
                         return reject(err)
@@ -74,11 +67,11 @@ class AutelisHost extends HostBase {
                               equipment = response.equipment[0],
                               temp      = response.temp[0]
 
-                        // console.dir(temp)
+                        // flatten and convert data
                         const poolData = {
                             runstate:      runStates[parseInt(system.runstate[0], 10)],
-                            model:         system.model[0],
-                            dip:           system.dip[0],
+                            model:         '=' + system.model[0] + '=',
+                            dip:           '=' + system.dip[0] + '=',
                             opmode:        opModes[parseInt(system.opmode[0], 10)],
                             vbat:          parseInt(system.vbat[0], 10) * 0.01464,
                             lowbat:        parseInt(system.lowbat[0], 10) ? 'Low' : 'Normal',
@@ -86,7 +79,7 @@ class AutelisHost extends HostBase {
                             // time:          parseInt(system.time[0], 10),
                             pump:          parseInt(equipment.pump[0], 10) ? 'on' : 'off',
                             spa:           parseInt(equipment.spa[0], 10) ? 'on' : 'off',
-                            jet:           parseInt(equipment.aux1[0], 10) ? 'on' : 'off',
+                            jets:          parseInt(equipment.aux1[0], 10) ? 'on' : 'off',
                             blower:        parseInt(equipment.aux2[0], 10) ? 'on' : 'off',
                             cleaner:       parseInt(equipment.aux3[0], 10) ? 'on' : 'off',
                             waterfall:     parseInt(equipment.aux4[0], 10) ? 'on' : 'off',
@@ -114,7 +107,7 @@ class AutelisHost extends HostBase {
         return new Promise((resolve, reject) => {
             request
                 .get(url)
-                .auth(Config.autelis.credentials.username, Config.autelis.credentials.password)
+                .auth(credentials.username, credentials.password)
                 .end((err, response) => {
                     if (err) {
                         return reject(err)
@@ -147,6 +140,15 @@ class AutelisHost extends HostBase {
     command(device, state) {
         const dev = deviceMap.forward[device]
 
+        if (device === 'spasp' || device === 'poolsp') {
+            state = Number(state)
+        }
+
+        if (dev === undefined || this.state[device] === state) {
+            console.log(device, dev, state, 'ignored')
+            return
+        }
+
         let newState   = state,
             isSetpoint = false
 
@@ -172,7 +174,7 @@ class AutelisHost extends HostBase {
         return new Promise((resolve, reject) => {
             request
                 .get(url)
-                .auth(Config.autelis.credentials.username, Config.autelis.credentials.password)
+                .auth(credentials.username, credentials.password)
                 .end((err, response) => {
                     if (err) {
                         return reject(err)
@@ -185,5 +187,5 @@ class AutelisHost extends HostBase {
     }
 }
 
-const self = new AutelisHost()
+const self = new AutelisHost(Config.mqtt.host, Config.mqtt.topic)
 

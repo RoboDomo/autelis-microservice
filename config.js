@@ -30,37 +30,5 @@ module.exports = {
             username: process.env.username || 'admin',
             password: process.env.password || 'admin'
         }
-    },
-    // this is the mapping of autelis device names to useful names
-    // for example, the autelis controller might use aux1 to control the jets
-    // and we want to say "jets" everywhere
-    deviceMap: {
-        forward:  {
-            pump:         'pump',
-            spa:          'spa',
-            jets:         'aux1',
-            blower:       'aux2',
-            cleaner:      'aux3',
-            waterfall:    'aux4',
-            poolLight:    'aux5',
-            spaLight:     'aux6',
-            spaSetpoint:  'spasp',
-            poolSetpoint: 'poolsp',
-            spaHeat:      'spaht',
-            poolHeat:     'poolht',
-        },
-        backward: {
-            pump:   'pump',
-            spa:    'spa',
-            aux1:   'jets',
-            aux2:   'blower',
-            aux3:   'cleaner',
-            aux4:   'waterfall',
-            aux5:   'poolLight',
-            aux6:   'spaLight',
-            spasp:  'spaSetpoint',
-            poolsp: 'poolSetpoint',
-        }
     }
-
 }

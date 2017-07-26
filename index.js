@@ -1,5 +1,8 @@
 process.env.DEBUG = 'AutelisHost,HostBase'
 
+// Autelis HTTP command reference:
+// http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference
+
 const
     debug       = require('debug')('AutelistHost'),
     Config      = require('./config'),
@@ -15,15 +18,15 @@ const POLL_TIME    = 6000,      // how often to poll Autelis controller
       REQUEST_TIME = 1500       // delay in requestProcessor
 
 const runStates    = {
-          1:  'Not Connected',
-          2:  'Startup Initialization Sequence 2',
-          3:  'Startup Initialization Sequence 3',
-          4:  'Startup Initialization Sequence 4',
-          5:  'Startup Initialization Sequence 5',
-          6:  'Startup Initialization Sequence 6',
-          7:  'Startup Initialization Sequence 7',
-          8:  'Connected and Ready',
-          9:  'Connected and Busy Executing Command 9',
+          1 : 'Not Connected',
+          2 : 'Startup Initialization Sequence 2',
+          3 : 'Startup Initialization Sequence 3',
+          4 : 'Startup Initialization Sequence 4',
+          5 : 'Startup Initialization Sequence 5',
+          6 : 'Startup Initialization Sequence 6',
+          7 : 'Startup Initialization Sequence 7',
+          8 : 'Connected and Ready',
+          9 : 'Connected and Busy Executing Command 9',
           10: 'Connected and Busy Executing Command 10',
           11: 'Connected and Busy Executing Command 11',
           12: 'Connected and Busy Executing Command 12'
@@ -67,32 +70,64 @@ class AutelisHost extends HostBase {
                               equipment = response.equipment[0],
                               temp      = response.temp[0]
 
-                        // flatten and convert data
+                        // Flatten and convert data
+                        //
+                        // Every pool setup will have a different configuration, but the microservice
+                        // is agnostic.  It does a straight conversion of the fields named in the
+                        // http://poolcontrol/status.xml response which is consistent with the HTTP
+                        // protocol linked above.
+                        //
+                        // Your client software will have to do conversions.  My system has aux1 is the
+                        // spa jets, aux2 is the spa air blower, etc.  Your system may have different
+                        // assignments.  Those can be configured in the client app.
                         const poolData = {
-                            runstate:      runStates[parseInt(system.runstate[0], 10)],
-                            model:         '=' + system.model[0] + '=',
-                            dip:           '=' + system.dip[0] + '=',
-                            opmode:        opModes[parseInt(system.opmode[0], 10)],
-                            vbat:          parseInt(system.vbat[0], 10) * 0.01464,
-                            lowbat:        parseInt(system.lowbat[0], 10) ? 'Low' : 'Normal',
-                            version:       system.version[0],
-                            // time:          parseInt(system.time[0], 10),
-                            pump:          parseInt(equipment.pump[0], 10) ? 'on' : 'off',
-                            spa:           parseInt(equipment.spa[0], 10) ? 'on' : 'off',
-                            jets:          parseInt(equipment.aux1[0], 10) ? 'on' : 'off',
-                            blower:        parseInt(equipment.aux2[0], 10) ? 'on' : 'off',
-                            cleaner:       parseInt(equipment.aux3[0], 10) ? 'on' : 'off',
-                            waterfall:     parseInt(equipment.aux4[0], 10) ? 'on' : 'off',
-                            poolLight:     parseInt(equipment.aux5[0], 10) ? 'on' : 'off',
-                            spaLight:      parseInt(equipment.aux6[0], 10) ? 'on' : 'off',
-                            poolHeat:      heaterStates[parseInt(equipment.poolht[0], 10)],
-                            spaHeat:       heaterStates[parseInt(equipment.spaht[0], 10)],
-                            poolSetpoint:  parseInt(temp.poolsp[0], 10),
-                            poolSetpoint2: parseInt(temp.poolsp2[0], 10),
-                            spaSetpoint:   parseInt(temp.spasp[0], 10),
-                            spaTemp:       parseInt(temp.spatemp[0], 10),
-                            poolTemp:      parseInt(temp.pooltemp[0], 10),
-                            airTemp:       parseInt(temp.airtemp[0], 10),
+                            runstate : runStates[parseInt(system.runstate[0], 10)],
+                            model    : '=' + system.model[0] + '=',
+                            dip      : '=' + system.dip[0] + '=',
+                            opmode   : opModes[parseInt(system.opmode[0], 10)],
+                            vbat     : parseInt(system.vbat[0], 10) * 0.01464,
+                            lowbat   : parseInt(system.lowbat[0], 10) ? 'Low' : 'Normal',
+                            version  : system.version[0],
+                            time     : parseInt(system.time[0], 10),
+                            pump     : parseInt(equipment.pump[0], 10) ? 'on' : 'off',
+                            pumplo   : parseInt(equipment.pumplo[0], 10) ? 'on' : 'off',
+                            spa      : parseInt(equipment.spa[0], 10) ? 'on' : 'off',
+                            waterfall: parseInt(equipment.waterfall[0], 10) ? 'on' : 'off',
+                            cleaner  : parseInt(equipment.cleaner[0], 10) ? 'on' : 'off',
+                            poolht   : heaterStates[parseInt(equipment.poolht[0], 10)],
+                            spaht    : heaterStates[parseInt(equipment.spaht[0], 10)],
+                            solarht  : heaterStates[parseInt(equipment.solarht[0], 10)],
+                            aux1     : parseInt(equipment.aux1[0], 10) ? 'on' : 'off',
+                            aux2     : parseInt(equipment.aux2[0], 10) ? 'on' : 'off',
+                            aux3     : parseInt(equipment.aux3[0], 10) ? 'on' : 'off',
+                            aux4     : parseInt(equipment.aux4[0], 10) ? 'on' : 'off',
+                            aux5     : parseInt(equipment.aux5[0], 10) ? 'on' : 'off',
+                            aux6     : parseInt(equipment.aux6[0], 10) ? 'on' : 'off',
+                            aux7     : parseInt(equipment.aux7[0], 10) ? 'on' : 'off',
+                            aux8     : parseInt(equipment.aux8[0], 10) ? 'on' : 'off',
+                            aux9     : parseInt(equipment.aux9[0], 10) ? 'on' : 'off',
+                            aux10    : parseInt(equipment.aux10[0], 10) ? 'on' : 'off',
+                            aux11    : parseInt(equipment.aux11[0], 10) ? 'on' : 'off',
+                            aux12    : parseInt(equipment.aux12[0], 10) ? 'on' : 'off',
+                            aux13    : parseInt(equipment.aux13[0], 10) ? 'on' : 'off',
+                            aux14    : parseInt(equipment.aux14[0], 10) ? 'on' : 'off',
+                            aux15    : parseInt(equipment.aux15[0], 10) ? 'on' : 'off',
+                            aux16    : parseInt(equipment.aux16[0], 10) ? 'on' : 'off',
+                            aux17    : parseInt(equipment.aux17[0], 10) ? 'on' : 'off',
+                            aux18    : parseInt(equipment.aux18[0], 10) ? 'on' : 'off',
+                            aux19    : parseInt(equipment.aux19[0], 10) ? 'on' : 'off',
+                            aux20    : parseInt(equipment.aux20[0], 10) ? 'on' : 'off',
+                            aux21    : parseInt(equipment.aux21[0], 10) ? 'on' : 'off',
+                            aux22    : parseInt(equipment.aux22[0], 10) ? 'on' : 'off',
+                            aux23    : parseInt(equipment.aux23[0], 10) ? 'on' : 'off',
+                            poolsp   : parseInt(temp.poolsp[0], 10),
+                            poolsp2  : parseInt(temp.poolsp2[0], 10),
+                            spasp    : parseInt(temp.spasp[0], 10),
+                            pootTemp : parseInt(temp.pooltemp[0], 10),
+                            spatemp  : parseInt(temp.spatemp[0], 10),
+                            airtemp  : parseInt(temp.airtemp[0], 10),
+                            solartemp: parseInt(temp.solartemp[0], 10),
+                            tempunits: temp.tempunits,
                         }
                         resolve(poolData)
                     })

@@ -8,8 +8,6 @@ const
     Config      = require('./config'),
     credentials = Config.autelis.credentials,
     host        = Config.autelis.host,
-    topic       = Config.mqtt.topic,
-    deviceMap   = Config.deviceMap,
     request     = require('superagent'),
     xml2js      = require('xml2js').parseString,
     HostBase    = require('microservice-core/HostBase')
@@ -17,7 +15,7 @@ const
 const POLL_TIME    = 6000,      // how often to poll Autelis controller
       REQUEST_TIME = 1500       // delay in requestProcessor
 
-const runStates    = {
+const runStates     = {
           1 : 'Not Connected',
           2 : 'Startup Initialization Sequence 2',
           3 : 'Startup Initialization Sequence 3',
@@ -31,12 +29,12 @@ const runStates    = {
           11: 'Connected and Busy Executing Command 11',
           12: 'Connected and Busy Executing Command 12'
       },
-      opModes      = {
+      opModes       = {
           0: 'Auto',
           1: 'Service',
           2: 'Timeout'
       },
-      heaterStates = {
+      heaterStates  = {
           0: 'off',
           1: 'enabled',
           2: 'on'
@@ -186,62 +184,72 @@ class AutelisHost extends HostBase {
 
     async command(device, state) {
         debug('command', device, state)
-        if (device === 'exception') {
-            Promise.resolve()
-        }
-        if (device === 'autelis/exception') {
-            return
-        }
-        if (validCommands.indexOf(device) === -1) {
-            if (this.state[device] !== state) {
-                this.exception(new Error('Cannot set ' + device))
+        try {
+
+            if (device === 'exception') {
+                return Promise.resolve()
             }
-            return
-        }
-        if (device === 'spasp' || device === 'poolsp') {
-            state = Number(state)
-        }
+            if (device.indexOf('exception') !== -1) {
+                return Promise.resolve()
+            }
+            if (!this.state)  {
+                return Promise.resolve()
+            }
+            if (validCommands.indexOf(device) === -1) {
+                if (this.state[device] !== state) {
+                    this.exception(new Error('Cannot set ' + device))
+                }
+                return Promise.resolve()
+            }
+            if (device === 'spasp' || device === 'poolsp') {
+                state = Number(state)
+            }
 
-        if (String(this.state[device]) === String(state)) {
-            // debug(device, state, 'ignored')
-            return
-        }
-        debug(device, this.state[device], typeof this.state[device], state, typeof state)
-        let newState   = state,
-            isSetpoint = false
+            if (String(this.state[device]) === String(state)) {
+                // debug(device, state, 'ignored')
+                return Promise.resolve()
+            }
+            debug(device, this.state[device], typeof this.state[device], state, typeof state)
+            let newState   = state,
+                isSetpoint = false
 
-        if (state === 'on' || state === '1' || state === 1) {
-            newState = '&value=1'
-        }
-        else if (state === 'off' || state === '0' || state === 0) {
-            newState = '&value=0'
-        }
-        else {
-            newState   = `&temp=${newState}`
-            isSetpoint = true
-        }
+            if (state === 'on' || state === '1' || state === 1) {
+                newState = '&value=1'
+            }
+            else if (state === 'off' || state === '0' || state === 0) {
+                newState = '&value=0'
+            }
+            else {
+                newState   = `&temp=${newState}`
+                isSetpoint = true
+            }
 
-        const url = `${host}/set.cgi?name=${device}${newState}`
-        debug(url)
+            const url = `${host}/set.cgi?name=${device}${newState}`
+            debug(url)
 
-        if (isSetpoint) {
-            this.requestQueue.push(url)
-            return Promise.resolve()
+            if (isSetpoint) {
+                this.requestQueue.push(url)
+                return Promise.resolve()
+            }
+            return new Promise((resolve, reject) => {
+                request
+                    .get(url)
+                    .auth(credentials.username, credentials.password)
+                    .end((err, response) => {
+                        if (err) {
+                            this.exception(err)
+                            return reject(err)
+                        }
+                        else {
+                            return resolve(response)
+                        }
+                    })
+            })
         }
-        return new Promise((resolve, reject) => {
-            request
-                .get(url)
-                .auth(credentials.username, credentials.password)
-                .end((err, response) => {
-                    if (err) {
-                        this.exception(err)
-                        return reject(err)
-                    }
-                    else {
-                        return resolve(response)
-                    }
-                })
-        })
+        catch (e) {
+            debug('exception', e)
+            this.exception(e)
+        }
     }
 }
 

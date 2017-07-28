@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker build -t autelis-microservice .
+docker build --no-cache -t autelis-microservice .

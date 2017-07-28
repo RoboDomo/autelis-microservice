@@ -171,7 +171,9 @@ class AutelisHost extends HostBase {
     async poll() {
         while (1) {
             try {
-                this.state = await this.pollOnce()
+                const newState = await this.pollOnce()
+                debug('poll', newState.aux1, newState.aux2, newState.aux3, newState.aux4)
+                this.state = newState
             }
             catch (e) {
                 this.exception(e)

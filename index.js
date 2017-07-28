@@ -50,7 +50,7 @@ const runStates     = {
 
 class AutelisHost extends HostBase {
     constructor(host, topic) {
-        debug('constructor', host, topic)
+        debug('xxx constructor', host, topic)
         super(host, topic)
         this.requestQueue = []
         this.poll()

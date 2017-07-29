@@ -12,7 +12,7 @@ const
     xml2js      = require('xml2js').parseString,
     HostBase    = require('microservice-core/HostBase')
 
-const POLL_TIME    = 6000,      // how often to poll Autelis controller
+const POLL_TIME    = 2000,      // how often to poll Autelis controller
       REQUEST_TIME = 1500       // delay in requestProcessor
 
 const runStates     = {
@@ -53,8 +53,12 @@ class AutelisHost extends HostBase {
         debug('constructor', host, topic)
         super(host, topic)
         this.requestQueue = []
-        this.poll()
-        this.requestProcessor()
+        setTimeout(async () => {
+            await this.poll()
+        }, 1)
+        setTimeout(async () => {
+            await this.requestProcessor()
+        }, 1)
     }
 
     async pollOnce() {
@@ -96,7 +100,7 @@ class AutelisHost extends HostBase {
                             vbat     : String(parseInt(system.vbat[0], 10) * 0.01464),
                             lowbat   : parseInt(system.lowbat[0], 10) ? 'Low' : 'Normal',
                             version  : system.version[0],
-                            time     : system.time[0],
+                            // time     : system.time[0],
                             pump     : parseInt(equipment.pump[0], 10) ? 'on' : 'off',
                             pumplo   : parseInt(equipment.pumplo[0], 10) ? 'on' : 'off',
                             spa      : parseInt(equipment.spa[0], 10) ? 'on' : 'off',
@@ -163,7 +167,7 @@ class AutelisHost extends HostBase {
 
     async requestProcessor() {
         while (1) {
-            this.processRequest(this.requestQueue.shift())
+            await this.processRequest(this.requestQueue.shift())
             await this.wait(REQUEST_TIME)
         }
     }
@@ -171,8 +175,9 @@ class AutelisHost extends HostBase {
     async poll() {
         while (1) {
             try {
-                const newState = await this.pollOnce()
-                debug('poll', newState.aux1, newState.aux2, newState.aux3, newState.aux4)
+                const newState = await this.pollOnce(),
+                    oldState = this.state || {}
+
                 this.state = newState
             }
             catch (e) {
@@ -181,13 +186,11 @@ class AutelisHost extends HostBase {
             }
             await this.wait(POLL_TIME)
         }
-
     }
 
     async command(device, state) {
         debug('command', device, state)
         try {
-
             if (device === 'exception') {
                 return Promise.resolve()
             }
@@ -255,5 +258,5 @@ class AutelisHost extends HostBase {
     }
 }
 
-const self = new AutelisHost(Config.mqtt.host, Config.mqtt.topic)
+new AutelisHost(Config.mqtt.host, Config.mqtt.topic)
 

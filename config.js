@@ -1,7 +1,3 @@
-/**
- *
- */
-
 module.exports = {
     // set this to wherever your mqtt server is
     mqtt:      {
@@ -29,6 +25,46 @@ module.exports = {
         credentials:  {
             username: process.env.username || 'admin',
             password: process.env.password || 'admin'
-        }
+        },
+        controllers: [
+            {
+                device:    'autelis',
+                name:      'Pool Control',
+                deviceMap: {
+                    forward:  {
+                        pump:         'pump',
+                        spa:          'spa',
+                        jet:          'aux1',
+                        blower:       'aux2',
+                        cleaner:      'aux3',
+                        waterfall:    'aux4',
+                        poolLight:    'aux5',
+                        spaLight:     'aux6',
+                        spaSetpoint:  'spasp',
+                        poolSetpoint: 'poolsp',
+                        spaHeat:      'spaht',
+                        poolHeat:     'poolht',
+                        poolTemp:     'pooltemp',
+                        spaTemp:      'spatemp'
+                    },
+                    backward: {
+                        pump:     'pump',
+                        spa:      'spa',
+                        aux1:     'jet',
+                        aux2:     'blower',
+                        aux3:     'cleaner',
+                        aux4:     'waterfall',
+                        aux5:     'poolLight',
+                        aux6:     'spaLight',
+                        spasp:    'spaSetpoint',
+                        poolsp:   'poolSetpoint',
+                        pooltemp: 'poolTemp',
+                        spatemp:  'spaTemp',
+                        spaht:    'spaHeat',
+                        poolht:   'poolHeat'
+                    },
+                }
+            },
+        ]
     }
 }

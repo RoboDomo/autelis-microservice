@@ -26,9 +26,15 @@
   },
   "homepage": "https://github.com/robodomo/autelis-microservice#readme",
   "dependencies": {
+    "babel-preset-es2016": "^6.24.1",
+    "babel-preset-latest": "^6.24.1",
+    "babel-register": "^6.24.1",
     "debug": "^2.6.8",
     "microservice-core": "github:robodomo/microservice-core",
     "superagent": "^3.5.2",
     "xml2js": "^0.4.18"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1"
   }
 }

@@ -64,7 +64,7 @@ module.exports = {
             spatemp:   'spaTemp',
             spaht:     'spaHeat',
             poolht:    'poolHeat',
-            solartemp: 'soalrTemp',
+            solartemp: 'solarTemp',
             solarht:   'solarHeat'
           },
         }

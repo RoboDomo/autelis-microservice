@@ -11,7 +11,7 @@ const debug = require("debug")("AutelisHost"),
   xml2js = require("xml2js").parseString,
   HostBase = require("microservice-core/HostBase");
 
-const POLL_TIME = 5000, // how often to poll Autelis controller
+const POLL_TIME = 2000, // how often to poll Autelis controller
   REQUEST_TIME = 1500; // delay in requestProcessor
 
 const runStates = {
@@ -80,29 +80,39 @@ class AutelisHost extends HostBase {
   constructor(host, topic) {
     debug("constructor", host, topic);
     super(host, topic);
+    this.pollInProgress = false;
     this.requestQueue = [];
+
     setTimeout(async () => {
       await this.poll();
     }, 1);
+
     setTimeout(async () => {
       await this.requestProcessor();
     }, 1);
   }
 
   async pollOnce() {
+    if (this.pollInProgress) {
+      return;
+    }
+    this.pollInProgress = true;
     const url = `${host}/status.xml`;
     return new Promise((resolve, reject) => {
       request
+        //        .set("Connection", "keep-alive")
         .get(url)
         .auth(credentials.username, credentials.password)
         .end((err, res) => {
+          this.pollInProgress = false;
           if (err) {
-            this.exception(err);
+            this.exception(err.stack);
             return reject(err);
           }
           xml2js(res.text, (err, result) => {
             if (err) {
-              this.exception(err);
+              debug("---------- xml2js err", res.text);
+              this.exception(err.stack);
               return reject(err);
             }
             const response = result.response,

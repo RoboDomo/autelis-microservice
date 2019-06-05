@@ -1,5 +1,7 @@
 process.env.DEBUG = "AutelisHost,HostBase";
 
+// TODO: get config from MongoDB
+
 // Autelis HTTP command reference:
 // http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference
 

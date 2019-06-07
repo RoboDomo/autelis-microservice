@@ -5,10 +5,9 @@ process.env.DEBUG = "AutelisHost,HostBase";
 // Autelis HTTP command reference:
 // http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference
 
+const MQTT_HOST = process.env.MQTT_HOST || "mqtt://robodomo";
+
 const debug = require("debug")("AutelisHost"),
-  Config = require("./config"),
-  credentials = Config.autelis.credentials,
-  host = Config.autelis.host,
   request = require("superagent"),
   xml2js = require("xml2js").parseString,
   HostBase = require("microservice-core/HostBase");
@@ -79,9 +78,15 @@ const runStates = {
   ];
 
 class AutelisHost extends HostBase {
-  constructor(host, topic) {
-    debug("constructor", host, topic);
-    super(host, topic);
+  constructor(Config) {
+    console.log(MQTT_HOST, Config.mqtt.autelis);
+    super(MQTT_HOST, Config.mqtt.autelis);
+    debug("constructor", this.host, this.topic);
+
+    const autelis = (this.autelis = Config.autelis);
+    this.url = autelis.url;
+    this.username = autelis.credentials.username;
+    this.password = autelis.credentials.password;
     this.pollInProgress = false;
     this.requestQueue = [];
 
@@ -99,12 +104,12 @@ class AutelisHost extends HostBase {
       return;
     }
     this.pollInProgress = true;
-    const url = `${host}/status.xml`;
+    const url = `${this.url}/status.xml`;
     return new Promise((resolve, reject) => {
       request
         //        .set("Connection", "keep-alive")
         .get(url)
-        .auth(credentials.username, credentials.password)
+        .auth(this.username, this.password)
         .end((err, res) => {
           this.pollInProgress = false;
           if (err) {
@@ -194,7 +199,7 @@ class AutelisHost extends HostBase {
     return new Promise((resolve, reject) => {
       request
         .get(url)
-        .auth(credentials.username, credentials.password)
+        .auth(this.username, this.password)
         .end((err, response) => {
           if (err) {
             this.exception(err);
@@ -271,7 +276,7 @@ class AutelisHost extends HostBase {
         isSetpoint = true;
       }
 
-      const url = `${host}/set.cgi?name=${device}${newState}`;
+      const url = `${this.url}/set.cgi?name=${device}${newState}`;
       debug(url);
 
       if (isSetpoint) {
@@ -281,7 +286,7 @@ class AutelisHost extends HostBase {
       return new Promise((resolve, reject) => {
         request
           .get(url)
-          .auth(credentials.username, credentials.password)
+          .auth(this.username, this.password)
           .end((err, response) => {
             if (err) {
               this.exception(err);
@@ -298,4 +303,9 @@ class AutelisHost extends HostBase {
   }
 }
 
-new AutelisHost(Config.mqtt.host, Config.mqtt.topic);
+const main = async () => {
+  const Config = await HostBase.config();
+  new AutelisHost(Config);
+};
+
+main();

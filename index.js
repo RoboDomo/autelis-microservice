@@ -1,4 +1,5 @@
 process.env.DEBUG = "AutelisHost,HostBase";
+process.title = "autelis-microservice";
 
 // TODO: get config from MongoDB
 
@@ -8,6 +9,7 @@ process.env.DEBUG = "AutelisHost,HostBase";
 const MQTT_HOST = process.env.MQTT_HOST || "mqtt://robodomo";
 
 const debug = require("debug")("AutelisHost"),
+  console = require("console"),
   request = require("superagent"),
   xml2js = require("xml2js").parseString,
   HostBase = require("microservice-core/HostBase");

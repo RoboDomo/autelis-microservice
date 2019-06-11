@@ -1,7 +1,5 @@
 process.env.DEBUG = "AutelisHost,HostBase";
-process.title = "autelis-microservice";
-
-// TODO: get config from MongoDB
+process.title = process.env.TITLE || "autelis-microservice";
 
 // Autelis HTTP command reference:
 // http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference

@@ -267,17 +267,24 @@ class AutelisHost extends HostBase {
       let newState = state,
         isSetpoint = false;
 
+      const s = {};
       if (state === "on" || state === "1" || state === 1) {
+        s[device] = "on";
+        this.state = s;
         newState = "&value=1";
       } else if (state === "off" || state === "0" || state === 0) {
+        s[device] = "off";
+        this.state = s;
         newState = "&value=0";
       } else {
+        s[device] = newState;
+        this.state = s;
         newState = `&temp=${newState}`;
         isSetpoint = true;
       }
 
       const url = `${this.url}/set.cgi?name=${device}${newState}`;
-      debug(url);
+      debug("newState", s, url);
 
       if (isSetpoint) {
         this.requestQueue.push(url);

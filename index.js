@@ -90,6 +90,9 @@ class AutelisHost extends HostBase {
     this.pollInProgress = false;
     this.requestQueue = [];
 
+    this.poll = this.poll.bind(this);
+    this.requestProcessor = this.requestProcessor.bind(this);
+
     setTimeout(async () => {
       await this.poll();
     }, 1);
@@ -101,11 +104,11 @@ class AutelisHost extends HostBase {
 
   async pollOnce() {
     if (this.pollInProgress) {
-      return;
+      return Promise.resolve();
     }
-    this.pollInProgress = true;
     const url = `${this.url}/status.xml`;
-    return new Promise((resolve, reject) => {
+    this.pollInProgress = true;
+    return new Promise(async (resolve, reject) => {
       request
         //        .set("Connection", "keep-alive")
         .get(url)
@@ -118,7 +121,7 @@ class AutelisHost extends HostBase {
           }
           xml2js(res.text, (err, result) => {
             if (err) {
-              debug("---------- xml2js err", res.text);
+              console.log("\n\n---------- xml2js err", res.text, "\n\n");
               this.exception(err.stack);
               return reject(err);
             }
@@ -177,24 +180,25 @@ class AutelisHost extends HostBase {
               aux21: parseInt(equipment.aux21[0], 10) ? "on" : "off",
               aux22: parseInt(equipment.aux22[0], 10) ? "on" : "off",
               aux23: parseInt(equipment.aux23[0], 10) ? "on" : "off",
-              poolsp: temp.poolsp[0],
-              poolsp2: temp.poolsp2[0],
-              spasp: temp.spasp[0],
-              pooltemp: temp.pooltemp[0],
-              spatemp: temp.spatemp[0],
-              airtemp: temp.airtemp[0],
-              solartemp: temp.solartemp[0],
+              poolsp: Number(temp.poolsp[0]),
+              poolsp2: Number(temp.poolsp2[0]),
+              spasp: Number(temp.spasp[0]),
+              pooltemp: Number(temp.pooltemp[0]),
+              spatemp: Number(temp.spatemp[0]),
+              airtemp: Number(temp.airtemp[0]),
+              solartemp: Number(temp.solartemp[0]),
               tempunits: temp.tempunits[0]
             };
-            resolve(poolData);
+            return resolve(poolData);
           });
+          return null;
         });
     });
   }
 
   async processRequest(url) {
     if (!url) {
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
     return new Promise((resolve, reject) => {
       request
@@ -205,14 +209,21 @@ class AutelisHost extends HostBase {
             this.exception(err);
             return reject(err);
           }
-          resolve(response.text);
+          return resolve(response.text);
         });
     });
   }
 
   async requestProcessor() {
     while (1) {
-      await this.processRequest(this.requestQueue.shift());
+      for (;;) {
+        const req = this.requestQueue.shift();
+        if (!req) {
+          break;
+        }
+        await this.processRequest(req);
+      }
+      // await this.processRequest(this.requestQueue.shift());
       await this.wait(REQUEST_TIME);
     }
   }
@@ -254,16 +265,15 @@ class AutelisHost extends HostBase {
       }
 
       if (String(this.state[device]) === String(state)) {
-        // debug(device, state, 'ignored')
         return Promise.resolve();
       }
-      debug(
-        device,
-        this.state[device],
-        typeof this.state[device],
-        state,
-        typeof state
-      );
+      // debug(
+      //   device,
+      //   this.state[device],
+      //   typeof this.state[device],
+      //   state,
+      //   typeof state
+      // );
       let newState = state,
         isSetpoint = false;
 
@@ -278,18 +288,17 @@ class AutelisHost extends HostBase {
         newState = "&value=0";
       } else {
         s[device] = newState;
-        this.state = s;
+        this.state = Number(s);
         newState = `&temp=${newState}`;
         isSetpoint = true;
       }
 
       const url = `${this.url}/set.cgi?name=${device}${newState}`;
-      debug("newState", s, url);
 
-      if (isSetpoint) {
-        this.requestQueue.push(url);
-        return Promise.resolve();
-      }
+      // if (isSetpoint) {
+      //   this.requestQueue.push(url);
+      //   return Promise.resolve();
+      // }
       return new Promise((resolve, reject) => {
         request
           .get(url)
@@ -304,8 +313,9 @@ class AutelisHost extends HostBase {
           });
       });
     } catch (e) {
-      debug("exception", e);
+      console.log("\n\nexception", e, "\n\n");
       this.exception(e);
+      return false;
     }
   }
 }

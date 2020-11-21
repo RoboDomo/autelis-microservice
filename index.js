@@ -4,7 +4,7 @@ process.title = process.env.TITLE || "autelis-microservice";
 // Autelis HTTP command reference:
 // http://www.autelis.com/wiki/index.php?title=Pool_Control_(PI)_HTTP_Command_Reference
 
-const MQTT_HOST = process.env.MQTT_HOST || "mqtt://robodomo";
+const MQTT_HOST = process.env.MQTT_HOST || "mqtt://ha";
 
 const debug = require("debug")("AutelisHost"),
   console = require("console"),
@@ -79,8 +79,8 @@ const runStates = {
 
 class AutelisHost extends HostBase {
   constructor(Config) {
-    console.log(MQTT_HOST, Config.mqtt.autelis);
     super(MQTT_HOST, Config.mqtt.autelis);
+    console.log(MQTT_HOST, Config.mqtt.autelis);
     debug("constructor", this.host, this.topic);
 
     const autelis = (this.autelis = Config.autelis);
@@ -243,7 +243,7 @@ class AutelisHost extends HostBase {
   }
 
   async command(device, state) {
-    debug("command", device, state);
+    console.log("command", device, state);
     try {
       if (device === "exception") {
         return Promise.resolve();
